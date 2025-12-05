@@ -1,14 +1,16 @@
 import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import Navigate
 import { X, Zap, CheckCircle, Briefcase } from 'lucide-react';
 import { Web3Context } from '../context/Web3Context';
 import axios from 'axios';
 
 const JobDetailModal = ({ job, onClose, onApplied }) => {
   const { account } = useContext(Web3Context);
-  const [step, setStep] = useState('details'); // 'details' | 'interview' | 'success'
+  const navigate = useNavigate(); // Initialize Navigate Hook
+  const [step, setStep] = useState('details'); // 'details' | 'success'
   const [loading, setLoading] = useState(false);
 
-  // 1. Simple Apply Function
+  // 1. Simple Apply Function (For Standard Jobs)
   const handleApply = async (score = 0) => {
     if(!account) return alert("Connect Wallet first!");
     setLoading(true);
@@ -28,14 +30,11 @@ const JobDetailModal = ({ job, onClose, onApplied }) => {
     }
   };
 
-  // 2. Mock AI Interview (For now, just a button simulation)
+  // 2. Start AI Interview (Redirect to Room)
   const startInterview = () => {
-    // In Sprint 3, this opens the Speech-to-Text logic
-    // For now, we simulate passing the interview
-    const mockScore = Math.floor(Math.random() * 3) + 7; // Random score 7-10
-    if(window.confirm(`AI Interview Simulator:\n\nQuestion: Explain React Hooks.\n\n[Click OK to Answer Correctly]`)) {
-        handleApply(mockScore);
-    }
+    // Redirect to the Full Screen Interview Page
+    // Pass the job data via state so the AI knows what to ask
+    navigate('/seeker/interview', { state: { job: job } });
   };
 
   if (!job) return null;
