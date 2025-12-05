@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Force the Background Color */
+body {
+  background-color: #0f172a; /* Deep Dark Blue */
+  color: white;
+}

@@ -1,0 +1,18 @@
+# Dependency directories
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment variables (SECURITY RISK if uploaded)
+.env
+client/.env
+server/.env
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# System files
+.DS_Store
+Thumbs.db
