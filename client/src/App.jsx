@@ -5,15 +5,20 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import ProfileSetup from './pages/seeker/ProfileSetup';
 import SeekerDashboard from './pages/seeker/SeekerDashboard';
-import InterviewRoom from './pages/seeker/InterviewRoom'; // Import Interview
-
+import InterviewRoom from './pages/seeker/InterviewRoom';
 import RecruiterDashboard from './pages/recruiter/RecruiterDashboard';
 import CreateJob from './pages/recruiter/CreateJob';
 import ATSView from './pages/recruiter/ATSView';
 
-// GLOBAL LAYOUT (Forces Dark Mode)
+// --- NEW GLOBAL LAYOUT (LIGHT MODE) ---
 const AppLayout = ({ children }) => (
-  <div style={{ backgroundColor: '#0f172a', color: 'white', minHeight: '100vh', width: '100%', fontFamily: 'sans-serif' }}>
+  <div style={{ 
+    backgroundColor: '#f8fafc', // Soft Light Gray (Premium feel)
+    color: '#0f172a',           // Dark Navy Text (High Contrast)
+    minHeight: '100vh', 
+    width: '100%', 
+    fontFamily: '"Inter", "Segoe UI", sans-serif' 
+  }}>
     {children}
   </div>
 );
@@ -26,12 +31,10 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           
-          {/* Seeker Routes */}
           <Route path="/seeker/setup" element={<ProfileSetup />} />
           <Route path="/seeker/dashboard" element={<SeekerDashboard />} />
           <Route path="/seeker/interview" element={<InterviewRoom />} />
           
-          {/* Recruiter Routes */}
           <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
           <Route path="/recruiter/create-job" element={<CreateJob />} />
           <Route path="/recruiter/ats/:jobId" element={<ATSView />} />
