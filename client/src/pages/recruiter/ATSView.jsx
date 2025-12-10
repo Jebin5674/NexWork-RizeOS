@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Check, X, MessageSquare, Star } from 'lucide-react';
+import { ArrowLeft, User, Check, X, Star } from 'lucide-react';
 import axios from 'axios';
 
 const ATSView = () => {
-  const { jobId } = useParams(); // Get Job ID from URL
+  const { jobId } = useParams();
   const navigate = useNavigate();
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // --- FETCH CANDIDATES ---
   const fetchCandidates = async () => {
     try {
       const res = await axios.get(`http://localhost:5000/api/jobs/candidates/${jobId}`);
       if (res.data.success) {
-        setCandidates(res.data.data);
+        // Only show candidates ready for manual review (HR and beyond)
+        const filteredCandidates = res.data.data.filter(
+            app => app.status === 'HR' || app.status === 'Manager' || app.status === 'Hired' || app.status === 'Rejected'
+        );
+        setCandidates(filteredCandidates);
       }
     } catch (error) {
       console.error("Error fetching candidates:", error);
@@ -23,107 +26,79 @@ const ATSView = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCandidates();
-  }, [jobId]);
+  useEffect(() => { fetchCandidates(); }, [jobId]);
 
-  // --- UPDATE STATUS ACTION ---
   const updateStatus = async (appId, newStatus) => {
     try {
       await axios.put(`http://localhost:5000/api/jobs/status/${appId}`, { status: newStatus });
-      fetchCandidates(); // Refresh UI
-      alert(`Candidate moved to ${newStatus}`);
+      fetchCandidates(); 
     } catch (error) {
       alert("Failed to update status");
     }
   };
 
-  // --- STYLES (Dark Mode Enforced) ---
-  const pageStyle = { backgroundColor: '#0f172a', color: 'white', minHeight: '100vh', padding: '2rem' };
-  const cardStyle = { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '1.5rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-  const badgeStyle = (status) => {
-    const colors = {
-      'Applied': '#94a3b8', 'ATS': '#3b82f6', 'HR': '#eab308', 'Manager': '#a855f7', 'Hired': '#22c55e', 'Rejected': '#ef4444'
-    };
-    return { backgroundColor: `${colors[status] || '#94a3b8'}33`, color: colors[status] || '#cbd5e1', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' };
+  // --- WHITE THEME STYLES ---
+  const styles = {
+    page: { backgroundColor: '#f8fafc', minHeight: '100vh', padding: '40px', color: '#1e293b' },
+    backBtn: { display: 'flex', alignItems: 'center', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', marginBottom: '30px', fontWeight: 'bold' },
+    title: { fontSize: '2.5rem', fontWeight: '800', marginBottom: '40px', color: '#14532d' },
+    card: { backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '24px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' },
+    badge: (status) => {
+      const colors = { 'HR': '#fef9c3', 'Manager': '#f3e8ff', 'Hired': '#dcfce7', 'Rejected': '#fee2e2' };
+      const textColors = { 'HR': '#854d0e', 'Manager': '#7e22ce', 'Hired': '#166534', 'Rejected': '#991b1b' };
+      return { backgroundColor: colors[status] || '#e2e8f0', color: textColors[status] || '#475569', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' };
+    },
+    actionBtn: { border: 'none', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }
   };
 
   return (
-    <div style={pageStyle}>
+    <div style={styles.page}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         
-        {/* HEADER */}
-        <button onClick={() => navigate('/recruiter/dashboard')} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', marginBottom: '20px' }}>
-            <ArrowLeft size={18} style={{ marginRight: '5px' }} /> Back to Dashboard
+        <button onClick={() => navigate('/recruiter/dashboard')} style={styles.backBtn}>
+            <ArrowLeft size={18} style={{ marginRight: '8px' }} /> Back to Dashboard
         </button>
 
-        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '30px' }}>Applicant Pipeline</h1>
+        <h1 style={styles.title}>AI-Screened Candidates</h1>
+        <p style={{color: '#64748b', marginTop: '-30px', marginBottom: '40px'}}>
+            Only candidates who passed the AI Voice and Coding tests appear here.
+        </p>
 
-        {/* LOADING STATE */}
-        {loading && <div style={{ color: '#94a3b8' }}>Loading candidates...</div>}
-
-        {/* CANDIDATE LIST */}
         {!loading && candidates.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', border: '1px dashed #334155', borderRadius: '12px' }}>
-                No applicants yet.
+            <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: '12px', backgroundColor: 'white' }}>
+                No candidates have passed the automated screening yet.
             </div>
         ) : (
             candidates.map(app => (
-                <div key={app._id} style={cardStyle}>
+                <div key={app._id} style={styles.card}>
                     
-                    {/* LEFT: INFO */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ width: '45px', height: '45px', borderRadius: '50%', backgroundColor: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <User size={24} color="#cbd5e1" />
-                        </div>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Candidate {app.applicantWallet.slice(0,6)}...</h3>
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
-                                <span style={badgeStyle(app.status)}>{app.status}</span>
-                                <span style={{ fontSize: '0.8rem', color: '#2dd4bf', display: 'flex', alignItems: 'center' }}>
-                                    <Star size={12} style={{marginRight:'4px'}}/> AI Score: {app.interviewScore || 85}%
-                                </span>
-                            </div>
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <div><h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>Candidate {app.applicantWallet.slice(0,6)}...</h3></div>
+                        <span style={{ ...styles.badge('Hired'), backgroundColor: '#fef3c7', color: '#92400e' }}><Star size={12} style={{display:'inline', marginRight:'4px'}}/> AI Score: {app.interviewScore}%</span>
                     </div>
 
-                    {/* RIGHT: ACTIONS (The Control Room) */}
                     <div style={{ display: 'flex', gap: '10px' }}>
                         
-                        {/* 1. MOVE TO HR */}
-                        {app.status === 'Applied' && (
-                            <button onClick={() => updateStatus(app._id, 'ATS')} style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                Pass ATS
-                            </button>
-                        )}
-                        {app.status === 'ATS' && (
-                            <button onClick={() => updateStatus(app._id, 'HR')} style={{ backgroundColor: '#eab308', color: 'black', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                Start HR
-                            </button>
-                        )}
+                        {/* Recruiter's first action is now Manager Round */}
                         {app.status === 'HR' && (
-                            <button onClick={() => updateStatus(app._id, 'Manager')} style={{ backgroundColor: '#a855f7', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                Manager Round
+                            <button onClick={() => updateStatus(app._id, 'Manager')} style={{ ...styles.actionBtn, backgroundColor: '#a855f7', color: 'white' }}>
+                                Start Manager Review
                             </button>
                         )}
                         {app.status === 'Manager' && (
-                            <button onClick={() => updateStatus(app._id, 'Hired')} style={{ backgroundColor: '#22c55e', color: 'black', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                HIRE NOW
+                            <button onClick={() => updateStatus(app._id, 'Hired')} style={{ ...styles.actionBtn, backgroundColor: '#22c55e', color: 'black' }}>
+                                HIRE
                             </button>
                         )}
 
-                        {/* REJECT BUTTON */}
                         {app.status !== 'Rejected' && app.status !== 'Hired' && (
-                            <button onClick={() => updateStatus(app._id, 'Rejected')} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title="Reject">
-                                <X size={20} />
-                            </button>
+                            <button onClick={() => updateStatus(app._id, 'Rejected')} style={{ ...styles.actionBtn, backgroundColor: '#fee2e2', color: '#991b1b' }} title="Reject"><X size={20} /></button>
                         )}
                     </div>
 
                 </div>
             ))
         )}
-
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ const RecruiterDashboard = () => {
 
   useEffect(() => {
     fetchMyJobs();
-  }, [account]);
+  }, [account, user.email]);
 
   // --- THEME: WHITE + GREEN + DIMMER GOLD (#D97706) ---
   const styles = {
@@ -122,7 +122,8 @@ const RecruiterDashboard = () => {
                                 </div>
                             </td>
                             <td style={{ padding: '20px', textAlign: 'right' }}>
-                                <Link to={`/recruiter/ats/${job._id}`} style={{ color: '#16a34a', textDecoration: 'none', fontWeight: 'bold', borderBottom: '2px solid #D97706' }}>Manage ATS</Link>
+                                {/* --- THE FIX IS HERE --- */}
+                                <Link to={`/recruiter/ats/${job._id}`} style={{ color: '#16a34a', textDecoration: 'none', fontWeight: 'bold', borderBottom: '2px solid #D97706' }}>Manage Candidates</Link>
                             </td>
                         </tr>
                     )) : (
