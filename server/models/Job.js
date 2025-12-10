@@ -5,20 +5,17 @@ const jobSchema = new mongoose.Schema({
     company: { type: String, required: true },
     location: { type: String, required: true },
     description: { type: String, required: true },
-    salary: { type: String, required: true }, // e.g. "0.5 ETH"
+    salary: { type: String, required: true },
     deadline: { type: Date, required: true },
-    
-    // The "Brain" of the app
     skills: [{ type: String }], 
     
-    // Web3 / Payment Stuff
-    walletAddress: { type: String, required: true }, // Who posted it?
-    isPaid: { type: Boolean, default: false },       // Did they pay the fee?
-    txHash: { type: String },                        // Proof of payment
+    // --- IDENTITY FIELDS ---
+    walletAddress: { type: String, required: true }, // The Payer
+    recruiterEmail: { type: String }, // <--- NEW: The Account Holder
     
-    // Features
+    isPaid: { type: Boolean, default: false },
+    txHash: { type: String },
     aiInterviewEnabled: { type: Boolean, default: false },
-
     createdAt: { type: Date, default: Date.now }
 });
 

@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { generateQuestions, evaluateAnswer } = require('../controllers/aiController');
+const { getTechnicalTest, evaluateCode } = require('../controllers/aiController');
 
-router.post('/generate', generateQuestions);
-router.post('/evaluate', evaluateAnswer);
+// Coding Test Routes
+router.post('/get-test', getTechnicalTest);
+router.post('/evaluate-code', evaluateCode);
 
 module.exports = router;

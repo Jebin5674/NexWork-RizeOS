@@ -9,6 +9,7 @@ import InterviewRoom from './pages/seeker/InterviewRoom';
 import RecruiterDashboard from './pages/recruiter/RecruiterDashboard';
 import CreateJob from './pages/recruiter/CreateJob';
 import ATSView from './pages/recruiter/ATSView';
+import Register from './pages/Register';
 
 // --- NEW GLOBAL LAYOUT (LIGHT MODE) ---
 const AppLayout = ({ children }) => (
@@ -30,6 +31,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           
           <Route path="/seeker/setup" element={<ProfileSetup />} />
           <Route path="/seeker/dashboard" element={<SeekerDashboard />} />

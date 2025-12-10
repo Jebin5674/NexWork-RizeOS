@@ -1,71 +1,91 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const OpenAI = require("openai");
+const fs = require('fs');
+const path = require('path');
 
-// Initialize Gemini
-let genAI;
-try {
-    if(process.env.GEMINI_API_KEY) {
-        genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    }
-} catch (error) {
-    console.error("Gemini Init Error:", error);
-}
+// Helper to init Groq
+const getGroq = () => {
+    if (!process.env.GROQ_API_KEY) throw new Error("No GROQ_API_KEY");
+    return new OpenAI({
+        apiKey: process.env.GROQ_API_KEY,
+        baseURL: "https://api.groq.com/openai/v1"
+    });
+};
 
-// 1. GENERATE QUESTIONS
-const generateQuestions = async (req, res) => {
-    const { skills, jobTitle } = req.body; 
-    console.log(`🤖 Generative AI: Creating questions for ${jobTitle}...`);
-
+// 1. GET TECHNICAL TEST (Non-AI, just Logic)
+const getTechnicalTest = async (req, res) => {
+    const { testConfig } = req.body; // e.g. ["easy", "medium", "hard"]
+    
     try {
-        // Fallback if no key
-        if (!genAI) throw new Error("No API Key configured");
-
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const prompt = `Generate 5 technical interview questions for a "${jobTitle}" role with skills: ${skills.join(", ")}. Return ONLY the questions separated by a pipe symbol (|). Do not number them.`;
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-
-        // Clean and split
-        const questions = text.replace(/\*/g, '').split('|').map(q => q.trim()).filter(q => q.length > 0);
+        // Read JSON File
+        const dataPath = path.join(__dirname, '../data/questions.json');
+        const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
         
-        res.json({ success: true, questions: questions.slice(0, 5) });
+        let selectedQuestions = [];
+
+        // Pick 1 random question for each difficulty selected
+        testConfig.forEach(level => {
+            const pool = data[level.toLowerCase()]; // 'easy', 'medium', 'hard'
+            if (pool && pool.length > 0) {
+                const randomQ = pool[Math.floor(Math.random() * pool.length)];
+                selectedQuestions.push(randomQ);
+            }
+        });
+
+        res.json({ success: true, questions: selectedQuestions });
 
     } catch (error) {
-        console.error("AI Error:", error.message);
-        // Fallback Questions so app doesn't crash
-        res.json({ success: true, questions: [
-            "Describe a challenging technical problem you solved.",
-            "How do you handle state management in complex applications?",
-            "Explain the concept of API rate limiting.",
-            "What is your preferred workflow for debugging?",
-            "How do you ensure code quality in a team?"
-        ]});
+        console.error("Test Gen Error:", error);
+        res.status(500).json({ success: false, message: "Failed to generate test" });
     }
 };
 
-// 2. EVALUATE ANSWER
-const evaluateAnswer = async (req, res) => {
-    const { question, userAnswer } = req.body;
-    console.log(`🧠 AI Judging Answer...`);
+// 2. EVALUATE CODE (AI Judge)
+const evaluateCode = async (req, res) => {
+    const { questionTitle, questionDesc, userCode } = req.body;
+    console.log(`🧠 AI Judging Code for: ${questionTitle}...`);
 
     try {
-        if (!genAI) throw new Error("No API Key");
+        const groq = getGroq();
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const prompt = `Question: "${question}"\nCandidate Answer: "${userAnswer}"\n\nRate this answer from 1 to 10 based on technical accuracy. Return ONLY the number.`;
+        const prompt = `
+            You are a Senior Software Engineer acting as a LeetCode Judge.
+            
+            Problem: "${questionTitle}"
+            Description: "${questionDesc}"
+            
+            User's Code Submission:
+            ${userCode}
+            
+            Task:
+            Check if this code solves the problem correctly.
+            - Logic must be sound.
+            - Edge cases should be handled (briefly).
+            - Syntax should be mostly correct (pseudo-code is acceptable if logic is perfect).
+            
+            OUTPUT:
+            Return ONLY the number "1" if the solution is Correct.
+            Return ONLY the number "0" if the solution is Incorrect.
+        `;
 
-        const result = await model.generateContent(prompt);
-        const scoreText = result.response.text();
-        const match = scoreText.match(/\d+/);
-        const score = match ? parseInt(match[0]) : 5;
+        const completion = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.1,
+        });
 
+        const text = completion.choices[0].message.content;
+        const match = text.match(/\d/);
+        const score = match ? parseInt(match[0]) : 0;
+
+        console.log(`✅ Code Verdict: ${score === 1 ? "PASS" : "FAIL"}`);
         res.json({ success: true, score });
 
     } catch (error) {
         console.error("AI Judge Error:", error.message);
-        res.json({ success: true, score: 7 }); // Default score on error
+        res.json({ success: true, score: 1 }); // Pass on error (fail-safe)
     }
 };
 
-module.exports = { generateQuestions, evaluateAnswer };
+// ... keep generateQuestions and evaluateAnswer (Voice) if needed ...
+// Export everything
+module.exports = { getTechnicalTest, evaluateCode };

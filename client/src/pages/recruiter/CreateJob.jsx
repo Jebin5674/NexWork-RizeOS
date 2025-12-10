@@ -3,204 +3,141 @@ import { Web3Context } from '../../context/Web3Context';
 import { useNavigate } from 'react-router-dom';
 import { ethers } from 'ethers';
 import axios from 'axios';
-import { Wallet, Sparkles, X, Loader } from 'lucide-react';
+import { Wallet, Sparkles, X, Loader, Code } from 'lucide-react'; // Added Code icon
 
 const CreateJob = () => {
-  const { account, connectWallet } = useContext(Web3Context);
+  const { account } = useContext(Web3Context);
   const navigate = useNavigate();
 
-  // Form State
-  const [formData, setFormData] = useState({
-    title: '', company: '', location: '', salary: '',
-    description: '', deadline: '', aiEnabled: false
-  });
+  // Get User Info from LocalStorage to send Email
+  const user = JSON.parse(localStorage.getItem('userInfo')) || {};
+
+  const [formData, setFormData] = useState({ title: '', company: '', location: '', salary: '', description: '', deadline: '', aiEnabled: false });
   const [skillInput, setSkillInput] = useState('');
   const [skills, setSkills] = useState([]);
+  
+  // --- NEW: CODING TEST CONFIG ---
+  const [testConfig, setTestConfig] = useState(['easy', 'medium', 'hard']); // Default: 1 Easy, 1 Medium, 1 Hard
+
   const [loading, setLoading] = useState(false);
 
-  // --- HANDLERS ---
-  const handleSkillKeyDown = (e) => {
-    if (e.key === 'Enter' && skillInput) {
-      e.preventDefault();
-      if (!skills.includes(skillInput)) {
-        setSkills([...skills, skillInput]);
-      }
-      setSkillInput('');
-    }
-  };
+  const handleSkillKeyDown = (e) => { if (e.key === 'Enter' && skillInput) { e.preventDefault(); if (!skills.includes(skillInput)) setSkills([...skills, skillInput]); setSkillInput(''); } };
+  const removeSkill = (s) => setSkills(skills.filter(i => i !== s));
+  const handleChange = (e) => { const { name, value, type, checked } = e.target; setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value })); };
 
-  const removeSkill = (skillToRemove) => {
-    setSkills(skills.filter(s => s !== skillToRemove));
-  };
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
-  // --- THE BIG ONE: PAYMENT & POST ---
   const handlePostJob = async (e) => {
     e.preventDefault();
-    if (!account) return alert("Please connect wallet first!");
-    
+    if (!account) return alert("Connect Wallet!");
     setLoading(true);
-
     try {
-      // --- STEP 1: BLOCKCHAIN PAYMENT ---
-      console.log("Step 1: Starting Payment...");
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      
       // REPLACE WITH YOUR ADMIN ADDRESS
-      const ADMIN_ADDRESS = "0xcD7fA151d4077E49ed73236B87a583825887131a"; 
+      const tx = await signer.sendTransaction({ to: "0xcD7fA151d4077E49ed73236B87a583825887131a", value: ethers.parseEther("0.00001") });
+      await tx.wait();
       
-      const tx = await signer.sendTransaction({
-        to: ADMIN_ADDRESS,
-        value: ethers.parseEther("0.00001")
+      await axios.post('http://localhost:5000/api/jobs', { 
+          ...formData, 
+          skills, 
+          walletAddress: account, 
+          txHash: tx.hash, 
+          isPaid: true, 
+          aiInterviewEnabled: formData.aiEnabled,
+          recruiterEmail: user.email,
+          testConfig: testConfig // <--- SENDING TEST CONFIG
       });
-
-      console.log("Tx Hash:", tx.hash);
-      await tx.wait(); // Wait for mining
-      console.log("Step 1: Payment Confirmed on Blockchain!");
-
-      // --- STEP 2: DATABASE SAVE ---
-      console.log("Step 2: Saving to Database...");
       
-      const jobPayload = {
-        title: formData.title,
-        company: formData.company,
-        location: formData.location,
-        description: formData.description,
-        salary: formData.salary,
-        deadline: formData.deadline,
-        skills: skills,
-        walletAddress: account,
-        txHash: tx.hash,
-        isPaid: true,
-        aiInterviewEnabled: formData.aiEnabled
-      };
+      alert("Success!"); navigate('/recruiter/dashboard');
+    } catch (error) { alert("Failed"); } finally { setLoading(false); }
+  };
 
-      const res = await axios.post('http://localhost:5000/api/jobs', jobPayload);
-      console.log("Step 2: Database Response:", res.data);
-      
-      alert("Job Posted Successfully!");
-      navigate('/recruiter/dashboard');
-
-    } catch (error) {
-      console.error("CRITICAL ERROR:", error);
-
-      // Check where it failed
-      if (error.response) {
-        // This means the SERVER rejected it
-        alert(`Server Error: ${error.response.data.error || "Unknown Server Error"}`);
-        console.log("Server Error Details:", error.response.data);
-      } else if (error.code === "ACTION_REJECTED") {
-        // This means User clicked "Reject" in MetaMask
-        alert("Transaction rejected by user.");
-      } else {
-        // Other errors
-        alert(`Error: ${error.message}`);
-      }
-    } finally {
-      setLoading(false);
-    }
+  // --- DIMMER GOLD THEME (#D97706) ---
+  const styles = {
+    container: { minHeight: '100vh', display: 'flex', justifyContent: 'center', padding: '40px', backgroundColor: '#f8fafc', color: '#0f172a' },
+    card: { width: '100%', maxWidth: '800px', backgroundColor: 'white', padding: '50px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' },
+    title: { fontSize: '2.5rem', fontWeight: '800', marginBottom: '40px', color: '#14532d' },
+    
+    inputGroup: { marginBottom: '25px' },
+    label: { display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#334155', marginBottom: '8px' },
+    input: { width: '100%', padding: '14px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none', transition: 'border 0.2s' },
+    
+    // NEW DIMMER GOLD BUTTON
+    payBtn: { 
+        width: '100%', padding: '18px', 
+        backgroundColor: '#D97706', // Dimmer Amber/Gold
+        color: 'white', 
+        fontSize: '1.2rem', fontWeight: '800', border: 'none', borderRadius: '12px', 
+        cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center',
+        marginTop: '30px', boxShadow: '0 10px 15px -3px rgba(217, 119, 6, 0.3)'
+    },
+    
+    skillTag: { backgroundColor: '#dcfce7', color: '#166534', padding: '6px 14px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', marginRight: '10px', marginBottom: '10px' },
+    aiBox: { backgroundColor: '#f0fdf4', border: '2px solid #16a34a', padding: '20px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' },
+    
+    // Test Config Box
+    testBox: { backgroundColor: '#fff7ed', border: '2px solid #fdba74', padding: '20px', borderRadius: '12px', marginBottom: '25px' }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6 flex justify-center">
-      <div className="w-full max-w-3xl bg-slate-800 rounded-xl p-8 border border-slate-700 shadow-2xl">
-        
-        <h1 className="text-3xl font-bold mb-6">Post a New Job</h1>
-        
-        <form onSubmit={handlePostJob} className="space-y-6">
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>Post a New Job</h1>
+        <form onSubmit={handlePostJob}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={styles.inputGroup}><label style={styles.label}>Job Title</label><input name="title" required onChange={handleChange} style={styles.input} placeholder="e.g. React Dev" /></div>
+            <div style={styles.inputGroup}><label style={styles.label}>Company</label><input name="company" required onChange={handleChange} style={styles.input} /></div>
+          </div>
           
-          {/* BASICS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Job Title</label>
-              <input name="title" required onChange={handleChange} className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 focus:border-teal-500 outline-none" placeholder="e.g. Senior React Dev" />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Company Name</label>
-              <input name="company" required onChange={handleChange} className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 focus:border-teal-500 outline-none" placeholder="e.g. TechCorp" />
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={styles.inputGroup}><label style={styles.label}>Location</label><input name="location" required onChange={handleChange} style={styles.input} /></div>
+            <div style={styles.inputGroup}><label style={styles.label}>Budget (ETH)</label><input name="salary" required onChange={handleChange} style={styles.input} /></div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Location</label>
-              <input name="location" required onChange={handleChange} className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 focus:border-teal-500 outline-none" placeholder="Remote / NY" />
+          <div style={styles.inputGroup}><label style={styles.label}>Description</label><textarea name="description" required onChange={handleChange} style={{...styles.input, fontFamily: 'inherit'}} rows="4" /></div>
+          
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Required Skills (Enter to add)</label>
+            <input value={skillInput} onChange={e => setSkillInput(e.target.value)} onKeyDown={handleSkillKeyDown} style={styles.input} placeholder="Type & Enter" />
+            <div style={{ marginTop: '10px' }}>{skills.map(s => <span key={s} style={styles.skillTag}>{s}<button type="button" onClick={() => removeSkill(s)} style={{border:'none', background:'none', marginLeft:'8px', cursor:'pointer', fontWeight:'bold'}}>×</button></span>)}</div>
+          </div>
+
+          <div style={styles.aiBox}>
+            <div><h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center' }}><Sparkles size={20} style={{marginRight:'10px'}}/> Enable AI Interviewer?</h4></div>
+            <input type="checkbox" name="aiEnabled" onChange={handleChange} style={{ width: '24px', height: '24px', accentColor: '#16a34a' }} />
+          </div>
+
+          {/* --- NEW PHASE 5: CODING TEST CONFIG --- */}
+          {formData.aiEnabled && (
+            <div style={styles.testBox}>
+                <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#ea580c', display: 'flex', alignItems: 'center' }}><Code size={20} style={{marginRight:'10px'}}/> Technical Test Configuration</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+                    {['Q1', 'Q2', 'Q3'].map((q, idx) => (
+                        <div key={idx}>
+                            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>{q} Difficulty</label>
+                            <select 
+                                value={testConfig[idx]}
+                                onChange={(e) => {
+                                    const newConfig = [...testConfig];
+                                    newConfig[idx] = e.target.value;
+                                    setTestConfig(newConfig);
+                                }}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #fdba74', backgroundColor: 'white' }}
+                            >
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </div>
+                    ))}
+                </div>
             </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Budget / Salary</label>
-              <input name="salary" required onChange={handleChange} className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 focus:border-teal-500 outline-none" placeholder="e.g. 3.5 ETH / $120k" />
-            </div>
-          </div>
+          )}
 
-          {/* DESCRIPTION */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Job Description</label>
-            <textarea name="description" required onChange={handleChange} rows="4" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 focus:border-teal-500 outline-none" placeholder="Describe the role..." />
-          </div>
+          <div style={styles.inputGroup}><label style={styles.label}>Deadline</label><input type="date" name="deadline" required onChange={handleChange} style={styles.input} /></div>
 
-          {/* SKILLS TAGS */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Required Skills (Press Enter to add)</label>
-            <input 
-              value={skillInput}
-              onChange={(e) => setSkillInput(e.target.value)}
-              onKeyDown={handleSkillKeyDown}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 focus:border-teal-500 outline-none" 
-              placeholder="Type skill & hit Enter (e.g. React)" 
-            />
-            <div className="flex flex-wrap gap-2 mt-3">
-              {skills.map(skill => (
-                <span key={skill} className="bg-teal-500/20 text-teal-300 px-3 py-1 rounded-full text-sm flex items-center">
-                  {skill}
-                  <button type="button" onClick={() => removeSkill(skill)} className="ml-2 hover:text-white"><X className="w-3 h-3"/></button>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* AI TOGGLE */}
-          <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 flex items-center justify-between">
-            <div>
-              <h4 className="font-bold flex items-center text-teal-400"><Sparkles className="w-4 h-4 mr-2"/> Enable AI Interviewer?</h4>
-              <p className="text-xs text-gray-500">Candidates must pass an AI voice interview to apply.</p>
-            </div>
-            <input 
-              type="checkbox" 
-              name="aiEnabled" 
-              onChange={handleChange}
-              className="w-6 h-6 accent-teal-500 cursor-pointer"
-            />
-          </div>
-
-          {/* DEADLINE */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Application Deadline</label>
-            <input type="date" name="deadline" required onChange={handleChange} className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 focus:border-teal-500 outline-none text-white" />
-          </div>
-
-          {/* SUBMIT BUTTON */}
-          <button 
-            type="submit" 
-            disabled={loading}
-            className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center transition-all shadow-lg ${
-              loading ? 'bg-slate-700 cursor-wait' : 'bg-teal-600 hover:bg-teal-700 text-white shadow-teal-900/20'
-            }`}
-          >
-            {loading ? (
-              <><Loader className="w-5 h-5 animate-spin mr-2" /> Processing Payment...</>
-            ) : (
-              <><Wallet className="w-5 h-5 mr-2" /> Pay 0.001 ETH & Post Job</>
-            )}
+          <button type="submit" disabled={loading} style={styles.payBtn}>
+            {loading ? "Processing..." : <><Wallet className="mr-3"/> Pay 0.00001 ETH & Post</>}
           </button>
-
         </form>
       </div>
     </div>

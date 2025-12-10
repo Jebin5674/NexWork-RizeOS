@@ -4,10 +4,9 @@ const Job = require('../models/Job');
 // @route   POST /api/jobs
 const createJob = async (req, res) => {
     try {
-        const { title, company, location, description, salary, deadline, skills, walletAddress, txHash, aiInterviewEnabled } = req.body;
+        // ADD recruiterEmail to the list of variables we accept
+        const { title, company, location, description, salary, deadline, skills, walletAddress, txHash, aiInterviewEnabled, recruiterEmail } = req.body;
 
-        // 1. In a real app, we would verify the txHash on-chain here.
-        // For now, we assume if txHash exists, payment was sent.
         const isPaid = !!txHash; 
 
         const job = await Job.create({
@@ -21,7 +20,8 @@ const createJob = async (req, res) => {
             walletAddress,
             txHash,
             isPaid,
-            aiInterviewEnabled
+            aiInterviewEnabled,
+            recruiterEmail // <--- SAVE IT
         });
 
         res.status(201).json({ success: true, data: job });

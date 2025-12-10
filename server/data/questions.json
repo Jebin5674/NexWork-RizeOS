@@ -1,0 +1,38 @@
+{
+  "easy": [
+    { "id": "e1", "title": "Two Sum", "desc": "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. Assume exactly one solution." },
+    { "id": "e2", "title": "Palindrome Number", "desc": "Given an integer x, return true if x is a palindrome, and false otherwise. (e.g. 121 is true, -121 is false)." },
+    { "id": "e3", "title": "Remove Duplicates from Sorted Array", "desc": "Given an integer array nums sorted in non-decreasing order, remove the duplicates in-place such that each unique element appears only once. Return k." },
+    { "id": "e4", "title": "Roman to Integer", "desc": "Given a roman numeral, convert it to an integer. (e.g. III = 3, IV = 4, IX = 9, LVIII = 58)." },
+    { "id": "e5", "title": "Length of Last Word", "desc": "Given a string s consisting of words and spaces, return the length of the last word in the string." },
+    { "id": "e6", "title": "Merge Sorted Array", "desc": "Merge nums1 and nums2 into a single array sorted in non-decreasing order. The final result should be stored inside nums1." },
+    { "id": "e7", "title": "Valid Palindrome", "desc": "A phrase is a palindrome if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward." },
+    { "id": "e8", "title": "Majority Element", "desc": "Given an array nums of size n, return the majority element. The majority element is the element that appears more than ⌊n / 2⌋ times." },
+    { "id": "e9", "title": "Is Subsequence", "desc": "Given two strings s and t, return true if s is a subsequence of t, or false otherwise." },
+    { "id": "e10", "title": "Reverse Vowels of a String", "desc": "Given a string s, reverse only all the vowels in the string and return it." }
+  ],
+  "medium": [
+    { "id": "m1", "title": "Longest Substring Without Repeating Characters", "desc": "Given a string s, find the length of the longest substring without repeating characters." },
+    { "id": "m2", "title": "Longest Palindromic Substring", "desc": "Given a string s, return the longest palindromic substring in s." },
+    { "id": "m3", "title": "Container With Most Water", "desc": "Given an integer array height of length n, find two lines that together with the x-axis form a container, such that the container contains the most water." },
+    { "id": "m4", "title": "3Sum", "desc": "Given an integer array nums, return all the triplets [nums[i], nums[j], nums[k]] such that i != j, i != k, and j != k, and nums[i] + nums[j] + nums[k] == 0." },
+    { "id": "m5", "title": "Group Anagrams", "desc": "Given an array of strings strs, group the anagrams together. You can return the answer in any order." },
+    { "id": "m6", "title": "Product of Array Except Self", "desc": "Given an integer array nums, return an array answer such that answer[i] is equal to the product of all the elements of nums except nums[i]. O(n) time." },
+    { "id": "m7", "title": "String to Integer (atoi)", "desc": "Implement the myAtoi(string s) function, which converts a string to a 32-bit signed integer." },
+    { "id": "m8", "title": "Spiral Matrix", "desc": "Given an m x n matrix, return all elements of the matrix in spiral order." },
+    { "id": "m9", "title": "Rotate Image", "desc": "You are given an n x n 2D matrix representing an image, rotate the image by 90 degrees (clockwise). You have to rotate the image in-place." },
+    { "id": "m10", "title": "Find the Duplicate Number", "desc": "Given an array of integers nums containing n + 1 integers where each integer is in the range [1, n] inclusive. There is only one repeated number in nums, return this repeated number." }
+  ],
+  "hard": [
+    { "id": "h1", "title": "Median of Two Sorted Arrays", "desc": "Given two sorted arrays nums1 and nums2 of size m and n respectively, return the median of the two sorted arrays. The overall run time complexity should be O(log (m+n))." },
+    { "id": "h2", "title": "Regular Expression Matching", "desc": "Implement regular expression matching with support for '.' and '*'." },
+    { "id": "h3", "title": "Trapping Rain Water", "desc": "Given n non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining." },
+    { "id": "h4", "title": "First Missing Positive", "desc": "Given an unsorted integer array nums, return the smallest missing positive integer. You must implement an algorithm that runs in O(n) time and uses O(1) auxiliary space." },
+    { "id": "h5", "title": "Edit Distance", "desc": "Given two strings word1 and word2, return the minimum number of operations required to convert word1 to word2." },
+    { "id": "h6", "title": "Minimum Window Substring", "desc": "Given two strings s and t of lengths m and n respectively, return the minimum window substring of s such that every character in t (including duplicates) is included in the window." },
+    { "id": "h7", "title": "Largest Rectangle in Histogram", "desc": "Given an array of integers heights representing the histogram's bar height where the width of each bar is 1, return the area of the largest rectangle in the histogram." },
+    { "id": "h8", "title": "Sliding Window Maximum", "desc": "You are given an array of integers nums, there is a sliding window of size k which is moving from the very left of the array to the very right. Return the max sliding window." },
+    { "id": "h9", "title": "Text Justification", "desc": "Given an array of strings words and a width maxWidth, format the text such that each line has exactly maxWidth characters and is fully (left and right) justified." },
+    { "id": "h10", "title": "Substring with Concatenation of All Words", "desc": "You are given a string s and an array of strings words. Find all starting indices of substring(s) in s that is a concatenation of each word in words exactly once." }
+  ]
+}
