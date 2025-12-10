@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Briefcase, User, ArrowRight, Hexagon, Mail, Lock, Linkedin, Github, Building, BadgeCheck } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api'; // <-- 1. IMPORT THE API HELPER
 
 const Register = () => {
   const navigate = useNavigate();
@@ -20,10 +20,11 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/register', { ...formData, role });
+      // --- 2. THE FIX: USE 'api' ---
+      const res = await api.post('/api/auth/register', { ...formData, role });
+      
       if (res.data.success) {
         alert("Account Created Successfully!");
-        // Simulate Login by saving token
         localStorage.setItem('userInfo', JSON.stringify(res.data));
         
         if (role === 'seeker') navigate('/seeker/setup');
@@ -36,7 +37,7 @@ const Register = () => {
     }
   };
 
-  // --- STYLES ---
+  // --- UI (No Changes) ---
   const containerStyle = { minHeight: '100vh', display: 'flex', fontFamily: 'sans-serif' };
   const leftStyle = { flex: '4', background: role === 'seeker' ? '#0f172a' : '#022c22', color: 'white', padding: '4rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' };
   const rightStyle = { flex: '8', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' };
@@ -45,7 +46,6 @@ const Register = () => {
 
   return (
     <div style={containerStyle}>
-      {/* LEFT SIDE */}
       <div className="hidden lg:flex" style={leftStyle}>
         <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
             <Hexagon fill="white" /> <span style={{fontSize:'2rem', fontWeight:'bold'}}>NexWork</span>
@@ -59,7 +59,6 @@ const Register = () => {
         <p>© 2025 NexWork Inc.</p>
       </div>
 
-      {/* RIGHT SIDE */}
       <div style={rightStyle}>
         <div style={{width:'100%', maxWidth:'500px'}}>
           <h2 style={{fontSize:'2rem', fontWeight:'bold', color:'#0f172a', marginBottom:'20px'}}>Create Account</h2>
@@ -74,9 +73,7 @@ const Register = () => {
             <input name="email" type="email" onChange={handleChange} placeholder="Email" style={inputStyle} required />
             <input name="password" type="password" onChange={handleChange} placeholder="Password" style={inputStyle} required />
             
-            {/* --- CONDITIONAL FIELDS --- */}
             {role === 'seeker' ? (
-                // SEEKER INPUTS
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px'}}>
                     <div>
                         <label style={labelStyle}>LinkedIn URL</label>
@@ -88,7 +85,6 @@ const Register = () => {
                     </div>
                 </div>
             ) : (
-                // RECRUITER INPUTS
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px'}}>
                     <div>
                         <label style={labelStyle}>Company Name</label>

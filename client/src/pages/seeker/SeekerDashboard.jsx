@@ -1,33 +1,32 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Search, Clock, Zap, Filter, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api'; // <-- 1. IMPORT THE API HELPER
 import JobDetailModal from '../../components/JobDetailModal';
-import StatusModal from '../../components/StatusModal'; // Import the new modal
+import StatusModal from '../../components/StatusModal';
 import { Web3Context } from '../../context/Web3Context';
 
 const SeekerDashboard = () => {
   const { account } = useContext(Web3Context);
   
-  // --- STATE ---
-  const [activeTab, setActiveTab] = useState('all'); // FIX: Default to All Jobs
+  const [activeTab, setActiveTab] = useState('all');
   const [jobs, setJobs] = useState([]); 
   const [applications, setApplications] = useState([]); 
   const [loading, setLoading] = useState(true);
-  const [selectedJob, setSelectedJob] = useState(null); // For Apply Modal
-  const [selectedApp, setSelectedApp] = useState(null); // For Status Modal
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedApp, setSelectedApp] = useState(null);
   const [sortBy, setSortBy] = useState('match'); 
 
-  // --- LOGIC ---
   const user = JSON.parse(localStorage.getItem('userInfo')) || {};
   const MY_SKILLS = user.skills || []; 
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const jobRes = await axios.get('http://localhost:5000/api/jobs');
+      // --- 2. THE FIX: USE 'api' ---
+      const jobRes = await api.get('/api/jobs');
       if (jobRes.data.success) setJobs(jobRes.data.data);
       if (account) {
-        const appRes = await axios.get(`http://localhost:5000/api/jobs/applications/${account}`);
+        const appRes = await api.get(`/api/jobs/applications/${account}`);
         if (appRes.data.success) setApplications(appRes.data.data);
       }
     } catch (error) { console.error("Data Fetch Error:", error); } 
@@ -39,7 +38,8 @@ const SeekerDashboard = () => {
   const handleDeleteJob = async (e, id) => {
     e.stopPropagation();
     if(window.confirm("Delete this Job Post? (Test feature)")) {
-        await axios.delete(`http://localhost:5000/api/jobs/${id}`);
+        // --- 3. THE FIX: USE 'api' ---
+        await api.delete(`/api/jobs/${id}`);
         fetchData();
     }
   }
@@ -47,7 +47,8 @@ const SeekerDashboard = () => {
   const handleDeleteApp = async (e, id) => {
     e.stopPropagation();
     if(window.confirm("Remove application?")) {
-        await axios.delete(`http://localhost:5000/api/jobs/application/${id}`);
+        // --- 4. THE FIX: USE 'api' ---
+        await api.delete(`/api/jobs/application/${id}`);
         fetchData();
     }
   }
@@ -72,7 +73,7 @@ const SeekerDashboard = () => {
     });
   };
 
-  // --- RENDER COMPONENTS ---
+  // --- UI COMPONENTS (No Changes) ---
   
   const JobCard = ({ job, isRecommended }) => {
     const score = getMatchPercentage(job.skills);
@@ -90,7 +91,6 @@ const SeekerDashboard = () => {
           </div>
         )}
 
-        {/* --- ADDED DELETE BUTTON --- */}
         <button onClick={(e) => handleDeleteJob(e, job._id)} style={{ position: 'absolute', top: '15px', left: '15px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><Trash2 size={16} /></button>
         
         <div style={{ paddingLeft: '25px', marginBottom: '10px' }}>
@@ -107,23 +107,11 @@ const SeekerDashboard = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
           <div style={{ fontSize: '0.75rem', color: daysLeft < 3 ? '#ef4444' : '#64748b' }}><Clock size={12} style={{ display:'inline', marginRight:'4px' }} />{daysLeft} Days Left</div>
           
-          {/* --- FIX: Package to the left of the button --- */}
           <span style={{ fontSize: '0.9rem', color: '#14b8a6', fontWeight: 'bold', marginRight: '15px' }}>{job.salary}</span>
           
           <button 
             onClick={() => setSelectedJob(job)} 
-            style={{ 
-                // --- FIX: PURPLE BUTTON FOR AI ---
-                backgroundColor: job.aiInterviewEnabled ? '#7e22ce' : '#2563eb', 
-                color: 'white', 
-                padding: '8px 16px', 
-                borderRadius: '8px', 
-                border: 'none', 
-                fontWeight: 'bold', 
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center'
-            }}
+            style={{ backgroundColor: job.aiInterviewEnabled ? '#7e22ce' : '#2563eb', color: 'white', padding: '8px 16px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
             {job.aiInterviewEnabled ? <><Zap size={14} style={{marginRight:'5px'}}/> View & Interview</> : "View & Apply"}
           </button>
@@ -136,7 +124,7 @@ const SeekerDashboard = () => {
     const job = app.jobId || {}; 
     return (
       <div 
-        onClick={() => setSelectedApp(app)} // Opens Status Modal
+        onClick={() => setSelectedApp(app)} 
         style={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', marginBottom: '1rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}
       >
         <div>
@@ -156,7 +144,6 @@ const SeekerDashboard = () => {
       <div className="max-w-5xl mx-auto">
         <div style={{ marginBottom: '30px' }}>
             <h1 className="text-3xl font-bold text-slate-800">Job Feed</h1>
-            {/* --- FIX: PERSONALIZED GREETING --- */}
             <p className="text-slate-500">Welcome, {user.name || 'Guest'}</p>
         </div>
         

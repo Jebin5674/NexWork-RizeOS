@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { Upload, Wallet, ArrowRight, Loader } from 'lucide-react';
 import { Web3Context } from '../../context/Web3Context';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../api'; // <-- 1. IMPORT THE API HELPER
 
 const ProfileSetup = () => {
   const { connectWallet, account } = useContext(Web3Context);
@@ -12,7 +12,6 @@ const ProfileSetup = () => {
   const [skills, setSkills] = useState([]);
   const [parsing, setParsing] = useState(false);
 
-  // 1. UPLOAD & PARSE
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
     setFile(selectedFile);
@@ -21,7 +20,8 @@ const ProfileSetup = () => {
       const formData = new FormData();
       formData.append('resume', selectedFile);
       try {
-        const res = await axios.post('http://localhost:5000/api/auth/parse-resume', formData, {
+        // --- 2. THE FIX: USE 'api' ---
+        const res = await api.post('/api/auth/parse-resume', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         setSkills(res.data.skills);
@@ -34,12 +34,10 @@ const ProfileSetup = () => {
     }
   };
 
-  // 2. SAVE & CONTINUE
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!account) return alert("Please connect your wallet first!");
     
-    // Get logged in user info to update profile
     const user = JSON.parse(localStorage.getItem('userInfo'));
     if (!user) {
         alert("Session expired. Please login again.");
@@ -48,14 +46,13 @@ const ProfileSetup = () => {
     }
 
     try {
-        // Save extracted skills to MongoDB
-        const res = await axios.put('http://localhost:5000/api/auth/profile', {
+        // --- 3. THE FIX: USE 'api' ---
+        const res = await api.put('/api/auth/profile', {
             email: user.email,
             skills: skills
         });
 
         if(res.data.success) {
-            // Update local storage so dashboard knows the new skills immediately
             const updatedUser = { ...user, skills: res.data.user.skills };
             localStorage.setItem('userInfo', JSON.stringify(updatedUser));
             navigate('/seeker/dashboard');
@@ -66,6 +63,7 @@ const ProfileSetup = () => {
     }
   };
 
+  // --- UI (No Changes) ---
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-6">
       <div className="w-full max-w-2xl bg-white rounded-2xl p-8 shadow-xl border border-slate-200">
@@ -75,7 +73,6 @@ const ProfileSetup = () => {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           
-          {/* UPLOAD */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">1. Upload Resume (PDF)</label>
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition-colors relative">
@@ -88,7 +85,6 @@ const ProfileSetup = () => {
             </div>
           </div>
 
-          {/* SKILLS */}
           {skills.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {skills.map((skill, index) => (
@@ -99,7 +95,6 @@ const ProfileSetup = () => {
             </div>
           )}
 
-          {/* WALLET */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">2. Web3 Identity</label>
             <div className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-200">

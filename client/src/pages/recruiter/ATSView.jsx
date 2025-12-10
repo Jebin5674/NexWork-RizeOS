@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Check, X, Star } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api'; // <-- 1. IMPORT API HELPER
 
 const ATSView = () => {
   const { jobId } = useParams();
@@ -11,9 +11,9 @@ const ATSView = () => {
 
   const fetchCandidates = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/jobs/candidates/${jobId}`);
+      // --- 2. THE FIX: USE 'api' ---
+      const res = await api.get(`/api/jobs/candidates/${jobId}`);
       if (res.data.success) {
-        // Only show candidates ready for manual review (HR and beyond)
         const filteredCandidates = res.data.data.filter(
             app => app.status === 'HR' || app.status === 'Manager' || app.status === 'Hired' || app.status === 'Rejected'
         );
@@ -30,14 +30,15 @@ const ATSView = () => {
 
   const updateStatus = async (appId, newStatus) => {
     try {
-      await axios.put(`http://localhost:5000/api/jobs/status/${appId}`, { status: newStatus });
+      // --- 3. THE FIX: USE 'api' ---
+      await api.put(`/api/jobs/status/${appId}`, { status: newStatus });
       fetchCandidates(); 
     } catch (error) {
       alert("Failed to update status");
     }
   };
 
-  // --- WHITE THEME STYLES ---
+  // --- UI (No Changes) ---
   const styles = {
     page: { backgroundColor: '#f8fafc', minHeight: '100vh', padding: '40px', color: '#1e293b' },
     backBtn: { display: 'flex', alignItems: 'center', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', marginBottom: '30px', fontWeight: 'bold' },
@@ -79,18 +80,12 @@ const ATSView = () => {
 
                     <div style={{ display: 'flex', gap: '10px' }}>
                         
-                        {/* Recruiter's first action is now Manager Round */}
                         {app.status === 'HR' && (
-                            <button onClick={() => updateStatus(app._id, 'Manager')} style={{ ...styles.actionBtn, backgroundColor: '#a855f7', color: 'white' }}>
-                                Start Manager Review
-                            </button>
+                            <button onClick={() => updateStatus(app._id, 'Manager')} style={{ ...styles.actionBtn, backgroundColor: '#a855f7', color: 'white' }}>Start Manager Review</button>
                         )}
                         {app.status === 'Manager' && (
-                            <button onClick={() => updateStatus(app._id, 'Hired')} style={{ ...styles.actionBtn, backgroundColor: '#22c55e', color: 'black' }}>
-                                HIRE
-                            </button>
+                            <button onClick={() => updateStatus(app._id, 'Hired')} style={{ ...styles.actionBtn, backgroundColor: '#22c55e', color: 'black' }}>HIRE</button>
                         )}
-
                         {app.status !== 'Rejected' && app.status !== 'Hired' && (
                             <button onClick={() => updateStatus(app._id, 'Rejected')} style={{ ...styles.actionBtn, backgroundColor: '#fee2e2', color: '#991b1b' }} title="Reject"><X size={20} /></button>
                         )}

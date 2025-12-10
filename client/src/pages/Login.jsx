@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Briefcase, User, ArrowRight, Hexagon } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api'; // <-- 1. IMPORT THE API HELPER
 
 const Login = () => {
   const navigate = useNavigate();
@@ -10,46 +10,44 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [uiRole, setUiRole] = useState('seeker'); // Just for UI color switching
+  const [uiRole, setUiRole] = useState('seeker');
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    console.log("Attempting Login for:", email);
-
     try {
-      // 1. Send Credentials to Backend
-      const res = await axios.post('http://localhost:5000/api/auth/login', {
+      // --- 2. THE FIX: USE 'api' ---
+      const res = await api.post('/api/auth/login', {
         email,
         password
       });
 
-      console.log("Server Response:", res.data);
-
-      // 2. CHECK SUCCESS
       if (res.data.success) {
         localStorage.setItem('userInfo', JSON.stringify(res.data));
         alert("Login Successful!");
 
-        // 3. Redirect based on DATABASE role (not the UI toggle)
         if (res.data.role === 'seeker') {
-          navigate('/seeker/dashboard');
+          // Check if user has skills, if not, send to setup
+          if (!res.data.skills || res.data.skills.length === 0) {
+            navigate('/seeker/setup');
+          } else {
+            navigate('/seeker/dashboard');
+          }
         } else {
           navigate('/recruiter/dashboard');
         }
       }
     } catch (error) {
       console.error("Login Failed:", error);
-      // 4. Handle Failure
       const errorMsg = error.response?.data?.message || "Invalid Email or Password";
-      alert("❌ " + errorMsg); // Show Alert on failure
+      alert("❌ " + errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- STYLES ---
+  // --- UI (No Changes) ---
   const containerStyle = { minHeight: '100vh', display: 'flex', fontFamily: 'sans-serif' };
   
   const leftPanelStyle = {
