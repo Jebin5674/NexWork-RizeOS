@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { Upload, Wallet, ArrowRight, Loader } from 'lucide-react';
 import { Web3Context } from '../../context/Web3Context';
 import { useNavigate } from 'react-router-dom';
-import api from '../../api'; // <-- 1. IMPORT THE API HELPER
+import api from 'src/api';
 
 const ProfileSetup = () => {
   const { connectWallet, account } = useContext(Web3Context);

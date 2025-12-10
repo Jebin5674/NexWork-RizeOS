@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Plus, Users, Search, TrendingUp, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Web3Context } from '../../context/Web3Context';
-import api from '../../api'; // <-- 1. IMPORT THE API HELPER
+import api from 'src/api';
 
 const RecruiterDashboard = () => {
   const { account, connectWallet } = useContext(Web3Context);

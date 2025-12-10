@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import 'regenerator-runtime/runtime';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import { Mic, Volume2, Code, ArrowRight, Home, Loader } from 'lucide-react';
-import api from '../../api'; // <-- IMPORT THE API HELPER
+import api from 'src/api';
 import { Web3Context } from '../../context/Web3Context';
 
 const InterviewRoom = () => {

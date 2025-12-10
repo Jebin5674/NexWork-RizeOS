@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Check, X, Star } from 'lucide-react';
-import api from '../../api'; // <-- 1. IMPORT API HELPER
+import api from 'src/api';
 
 const ATSView = () => {
   const { jobId } = useParams();

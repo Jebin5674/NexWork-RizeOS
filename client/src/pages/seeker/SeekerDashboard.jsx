@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Search, Clock, Zap, Filter, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import api from '../../api'; // <-- 1. IMPORT THE API HELPER
+import api from 'src/api';
 import JobDetailModal from '../../components/JobDetailModal';
 import StatusModal from '../../components/StatusModal';
 import { Web3Context } from '../../context/Web3Context';

@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { Web3Context } from '../../context/Web3Context';
 import { useNavigate } from 'react-router-dom';
 import { ethers } from 'ethers';
-import api from '../../api'; // <-- 1. IMPORT THE API HELPER
+import api from 'src/api';
 import { Wallet, Sparkles, X, Loader, Code } from 'lucide-react';
 
 const CreateJob = () => {

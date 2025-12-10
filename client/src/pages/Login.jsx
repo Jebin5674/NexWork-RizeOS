@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Briefcase, User, ArrowRight, Hexagon } from 'lucide-react';
-import api from '../../api'; // <-- 1. IMPORT THE API HELPER
+import api from 'src/api';
 
 const Login = () => {
   const navigate = useNavigate();

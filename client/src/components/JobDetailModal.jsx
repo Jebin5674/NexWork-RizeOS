@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Zap, CheckCircle, Briefcase } from 'lucide-react';
 import { Web3Context } from '../context/Web3Context';
-import api from '../api'; // <-- 1. IMPORT THE API HELPER
+import api from 'src/api';
 
 const JobDetailModal = ({ job, onClose, onApplied }) => {
   const { account } = useContext(Web3Context);
