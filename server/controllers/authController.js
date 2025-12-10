@@ -56,18 +56,24 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     try {
+        // Find the user by their email
         const user = await User.findOne({ email });
 
-        // Check password using the method inside User.js
+        // Check if user exists AND if the password matches
         if (user && (await user.matchPassword(password))) {
+            
+            // --- THE FIX IS HERE ---
+            // When login is successful, include the 'skills' array in the response
             res.json({
                 success: true,
                 _id: user._id,
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                skills: user.skills, // <--- ADD THIS LINE
                 token: generateToken(user._id)
             });
+
         } else {
             res.status(401).json({ success: false, message: 'Invalid email or password' });
         }

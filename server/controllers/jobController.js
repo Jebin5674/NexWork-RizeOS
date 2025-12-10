@@ -4,8 +4,8 @@ const Job = require('../models/Job');
 // @route   POST /api/jobs
 const createJob = async (req, res) => {
     try {
-        // ADD recruiterEmail to the list of variables we accept
-        const { title, company, location, description, salary, deadline, skills, walletAddress, txHash, aiInterviewEnabled, recruiterEmail } = req.body;
+        // --- THE FIX: ADD testConfig HERE ---
+        const { title, company, location, description, salary, deadline, skills, walletAddress, txHash, aiInterviewEnabled, recruiterEmail, testConfig } = req.body;
 
         const isPaid = !!txHash; 
 
@@ -21,7 +21,8 @@ const createJob = async (req, res) => {
             txHash,
             isPaid,
             aiInterviewEnabled,
-            recruiterEmail // <--- SAVE IT
+            recruiterEmail,
+            testConfig // <--- AND SAVE IT HERE
         });
 
         res.status(201).json({ success: true, data: job });
@@ -31,11 +32,11 @@ const createJob = async (req, res) => {
     }
 };
 
-// @desc    Get all paid jobs (For the Feed)
-// @route   GET /api/jobs
+// --- REST OF THE FILE IS UNCHANGED ---
+
+// @desc    Get all paid jobs
 const getJobs = async (req, res) => {
     try {
-        // Only fetch jobs that are PAID
         const jobs = await Job.find({ isPaid: true }).sort({ createdAt: -1 });
         res.json({ success: true, count: jobs.length, data: jobs });
     } catch (error) {
@@ -44,7 +45,6 @@ const getJobs = async (req, res) => {
 };
 
 // @desc Delete a job
-// @route DELETE /api/jobs/:id
 const deleteJob = async (req, res) => {
     try {
         await Job.findByIdAndDelete(req.params.id);
@@ -54,5 +54,4 @@ const deleteJob = async (req, res) => {
     }
 };
 
-// UPDATE EXPORTS
 module.exports = { createJob, getJobs, deleteJob };
