@@ -12,11 +12,11 @@ const InterviewRoom = () => {
   const navigate = useNavigate();
   const job = location.state?.job;
 
-  // --- State Management ---
+  // --- State ---
   const [phase, setPhase] = useState('voice');
   const [questions, setQuestions] = useState([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
-  const [voiceAnswers, setVoiceAnswers] = useState([]);
+  const [voiceScores, setVoiceScores] = useState([]);
   const [codeScores, setCodeScores] = useState([]);
   const [userCode, setUserCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,17 +25,13 @@ const InterviewRoom = () => {
 
   const { transcript, listening, resetTranscript, browserSupportsSpeechRecognition } = useSpeechRecognition();
 
-  // --- 1. INITIALIZE & CREATE APPLICATION ---
+  // --- 1. INITIALIZE ---
   useEffect(() => {
     if (!job || !account) { setUiState('error'); return; }
     
     const initializeInterview = async () => {
       try {
-        const appRes = await api.post('/api/jobs/apply', { 
-            jobId: job._id, 
-            applicantWallet: account,
-            status: 'Applied'
-        });
+        const appRes = await api.post('/api/jobs/apply', { jobId: job._id, applicantWallet: account, status: 'Applied' });
         if (appRes.data.success) {
             setApplicationId(appRes.data.applicationId);
         } else {
@@ -59,15 +55,16 @@ const InterviewRoom = () => {
   
   // Helper to update status automatically
   const updateStatus = async (status) => {
+    if (!applicationId) return; // Safety check
     try {
         await api.put(`/api/jobs/status/${applicationId}`, { status });
-        console.log(`Application status automatically updated to: ${status}`);
+        console.log(`Status updated to: ${status}`);
     } catch (error) {
-        console.error("Failed to update status automatically:", error);
+        console.error("Status update failed:", error);
     }
   };
 
-  // --- 2. VOICE INTERVIEW LOGIC ---
+  // --- 2. VOICE INTERVIEW ---
   const speakText = (text) => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -88,31 +85,54 @@ const InterviewRoom = () => {
     SpeechRecognition.stopListening();
     setIsProcessing(true);
     const answer = transcript.length > 5 ? transcript : "No answer"; 
-    const newAnswers = [...voiceAnswers, answer];
-    setVoiceAnswers(newAnswers);
 
-    if (currentQIndex + 1 < 5) {
-        setCurrentQIndex(prev => prev + 1);
-        setUiState('ready');
-        resetTranscript();
-    } else {
-        const effortScore = newAnswers.filter(a => a !== "No answer").length;
-        if (effortScore >= 3) {
-            alert("Voice Round Passed! Now for the Coding Challenge.");
-            await updateStatus('ATS');
+    try {
+        // Send to AI Judge to get a score (1 or 0)
+        const res = await api.post('/api/ai/evaluate-voice', {
+            question: questions[currentQIndex],
+            userAnswer: answer
+        });
+        
+        const score = res.data.score || 0;
+        const newScores = [...voiceScores, score];
+        setVoiceScores(newScores);
+
+        // Check if Voice Phase is Done
+        if (currentQIndex + 1 < questions.length) {
+            setCurrentQIndex(prev => prev + 1);
+            setUiState('ready');
+            resetTranscript();
+        } else {
+            const totalScore = newScores.reduce((a, b) => a + b, 0);
+            if (totalScore >= 3) {
+                alert("Voice Round Passed! Now for the Coding Challenge.");
+                await updateStatus('ATS');
+                setPhase('coding');
+                setUiState('loading');
+                loadCodingTest();
+            } else {
+                await updateStatus('Rejected');
+                alert(`Voice Round Failed. You only scored ${totalScore}/${questions.length}. Application rejected.`);
+                navigate('/seeker/dashboard');
+            }
+        }
+    } catch (error) {
+        console.error("Evaluation Error:", error);
+        // Move next even on error to not block the user
+        if (currentQIndex + 1 < questions.length) {
+            setCurrentQIndex(prev => prev + 1);
+            setUiState('ready');
+        } else {
             setPhase('coding');
             setUiState('loading');
             loadCodingTest();
-        } else {
-            await updateStatus('Rejected');
-            alert(`Voice Round Failed. You only answered ${effortScore}/5 questions. Application rejected.`);
-            navigate('/seeker/dashboard');
         }
+    } finally {
+        setIsProcessing(false);
     }
-    setIsProcessing(false);
   };
   
-  // --- 3. CODING TEST LOGIC ---
+  // --- 3. CODING TEST ---
   const loadCodingTest = async () => {
     try {
         const res = await api.post('/api/ai/get-test', { testConfig: job.testConfig || ['easy', 'medium', 'hard'] });
@@ -161,14 +181,11 @@ const InterviewRoom = () => {
     return <div className="text-white p-10 bg-slate-900 h-screen">Browser not supported. Use Chrome.</div>;
   }
 
-  if (uiState === 'error') {
-    return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white' }}>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>⚠️ Session Error</h1>
-            <p>Please go back and start the interview again.</p>
-            <button onClick={() => navigate('/seeker/dashboard')} style={{ background: '#2563eb', padding: '10px 20px', borderRadius: '8px', marginTop: '10px' }}>Dashboard</button>
-        </div>
-    );
+  if (uiState === 'error' || !job) {
+    return <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>⚠️ Session Error</h1>
+        <button onClick={() => navigate('/seeker/dashboard')} style={{ background: '#2563eb', padding: '10px 20px', borderRadius: '8px', marginTop: '10px' }}>Dashboard</button>
+    </div>;
   }
 
   const renderContent = () => {
@@ -178,9 +195,14 @@ const InterviewRoom = () => {
       if (uiState === 'ready') return <button onClick={startVoiceQuestion} style={{background:'white', color:'black', padding:'12px 30px', borderRadius:'30px', fontWeight:'bold'}}>Start Voice Question {currentQIndex + 1}</button>;
       if (uiState === 'speaking') return <p style={{fontSize:'1.5rem'}}>"{questions[currentQIndex]}"</p>;
       if (uiState === 'listening') return <div style={{width:'100%'}}>
-          <p style={{minHeight:'60px'}}>{transcript || "Listening..."}</p>
-          <button onClick={submitVoiceAnswer} disabled={isProcessing} style={{padding:'10px 20px', background:'#16a34a', border:'none', color:'white', borderRadius:'8px', fontWeight:'bold'}}>
-            {isProcessing ? "Processing..." : "Submit Answer"}
+          <div style={{display:'flex', justifyContent:'center', marginBottom:'20px'}}>
+              <div style={{width:'80px', height:'80px', borderRadius:'50%', background: listening ? 'rgba(239, 68, 68, 0.2)' : '#334155', display:'flex', alignItems:'center', justifyContent:'center', border: listening ? '2px solid #ef4444' : 'none', transition:'all 0.2s'}}>
+                  <Mic size={40} style={{color: listening ? '#ef4444' : '#64748b'}}/>
+              </div>
+          </div>
+          <p style={{minHeight:'60px', background:'#020617', padding:'10px', borderRadius:'8px', border:'1px solid #475569'}}>{transcript || "Listening..."}</p>
+          <button onClick={submitVoiceAnswer} disabled={isProcessing} style={{padding:'10px 20px', background:'#16a34a', border:'none', color:'white', borderRadius:'8px', fontWeight:'bold', width:'100%', marginTop:'10px'}}>
+            {isProcessing ? "Grading Answer..." : "Submit Answer"}
           </button>
         </div>;
     }
@@ -203,7 +225,7 @@ const InterviewRoom = () => {
     <div style={{minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#0f172a', color:'white', padding:'20px'}}>
         <div style={{width:'100%', maxWidth:'900px', textAlign:'center'}}>
             <h1 style={{fontSize:'2.5rem', fontWeight:'800', marginBottom:'10px'}}>{job?.title}</h1>
-            <h2 style={{fontSize:'1rem', color: phase === 'voice' ? '#60a_5fa' : '#a78bfa', fontWeight:'bold', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'30px'}}>
+            <h2 style={{fontSize:'1rem', color: phase === 'voice' ? '#60a5fa' : '#a78bfa', fontWeight:'bold', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'30px'}}>
                 {phase === 'voice' ? 'Phase 1: Conceptual Interview (5 Qs)' : 'Phase 2: Coding Challenge (3 Qs)'}
             </h2>
             <div style={{background:'#1e293b', border:'1px solid #334155', borderRadius:'20px', padding:'40px', minHeight:'400px', display:'flex', alignItems:'center', justifyContent:'center'}}>
