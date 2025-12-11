@@ -16,7 +16,7 @@ const InterviewRoom = () => {
   const [phase, setPhase] = useState('voice');
   const [questions, setQuestions] = useState([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
-  const [voiceScores, setVoiceScores] = useState([]);
+  const [voiceAnswers, setVoiceAnswers] = useState([]);
   const [codeScores, setCodeScores] = useState([]);
   const [userCode, setUserCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -32,13 +32,8 @@ const InterviewRoom = () => {
     const initializeInterview = async () => {
       try {
         const appRes = await api.post('/api/jobs/apply', { jobId: job._id, applicantWallet: account, status: 'Applied' });
-        if (appRes.data.success) {
-            setApplicationId(appRes.data.applicationId);
-        } else {
-            alert("Application Error: " + appRes.data.message);
-            navigate('/seeker/dashboard');
-            return;
-        }
+        if (appRes.data.success) setApplicationId(appRes.data.applicationId);
+        else { navigate('/seeker/dashboard'); return; }
         
         const voiceRes = await api.post('/api/ai/generate-voice', { jobTitle: job.title, skills: job.skills });
         if (voiceRes.data.success) {
@@ -46,7 +41,6 @@ const InterviewRoom = () => {
             setUiState('ready');
         }
       } catch (error) {
-        alert("Failed to initialize interview: " + (error.response?.data?.message || error.message));
         navigate('/seeker/dashboard');
       }
     };
@@ -55,23 +49,24 @@ const InterviewRoom = () => {
   
   // Helper to update status automatically
   const updateStatus = async (status) => {
-    if (!applicationId) return; // Safety check
+    if (!applicationId) return;
     try {
         await api.put(`/api/jobs/status/${applicationId}`, { status });
-        console.log(`Status updated to: ${status}`);
-    } catch (error) {
-        console.error("Status update failed:", error);
-    }
+    } catch (error) { console.error("Status update failed"); }
   };
 
-  // --- 2. VOICE INTERVIEW ---
+  // --- 2. VOICE INTERVIEW LOGIC (WITH DEBUGGING) ---
   const speakText = (text) => {
+    console.log("DEBUG [TTS]: AI is speaking the text:", text);
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.onend = () => {
+        console.log("DEBUG [TTS]: AI finished speaking.");
+        console.log("DEBUG [STT]: Attempting to start microphone...");
         setUiState('listening');
         resetTranscript();
-        SpeechRecognition.startListening({ continuous: true });
+        SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+        console.log("DEBUG [STT]: startListening command was sent.");
     };
     window.speechSynthesis.speak(utterance);
   };
@@ -80,59 +75,46 @@ const InterviewRoom = () => {
     setUiState('speaking');
     speakText(questions[currentQIndex]);
   };
+  
+  const manualStartListen = () => {
+    console.log("DEBUG [STT]: Manually forcing microphone to start...");
+    if (!listening) {
+        SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+    } else {
+        console.log("DEBUG [STT]: Microphone is already listening.");
+    }
+  }
 
   const submitVoiceAnswer = async () => {
+    console.log("DEBUG: Submitting answer. Final transcript is:", transcript);
     SpeechRecognition.stopListening();
     setIsProcessing(true);
     const answer = transcript.length > 5 ? transcript : "No answer"; 
+    const newAnswers = [...voiceAnswers, answer];
+    setVoiceAnswers(newAnswers);
 
-    try {
-        // Send to AI Judge to get a score (1 or 0)
-        const res = await api.post('/api/ai/evaluate-voice', {
-            question: questions[currentQIndex],
-            userAnswer: answer
-        });
-        
-        const score = res.data.score || 0;
-        const newScores = [...voiceScores, score];
-        setVoiceScores(newScores);
-
-        // Check if Voice Phase is Done
-        if (currentQIndex + 1 < questions.length) {
-            setCurrentQIndex(prev => prev + 1);
-            setUiState('ready');
-            resetTranscript();
-        } else {
-            const totalScore = newScores.reduce((a, b) => a + b, 0);
-            if (totalScore >= 3) {
-                alert("Voice Round Passed! Now for the Coding Challenge.");
-                await updateStatus('ATS');
-                setPhase('coding');
-                setUiState('loading');
-                loadCodingTest();
-            } else {
-                await updateStatus('Rejected');
-                alert(`Voice Round Failed. You only scored ${totalScore}/${questions.length}. Application rejected.`);
-                navigate('/seeker/dashboard');
-            }
-        }
-    } catch (error) {
-        console.error("Evaluation Error:", error);
-        // Move next even on error to not block the user
-        if (currentQIndex + 1 < questions.length) {
-            setCurrentQIndex(prev => prev + 1);
-            setUiState('ready');
-        } else {
+    if (currentQIndex + 1 < 5) { // Assuming 5 voice questions
+        setCurrentQIndex(prev => prev + 1);
+        setUiState('ready');
+        resetTranscript();
+    } else {
+        const effortScore = newAnswers.filter(a => a !== "No answer").length;
+        if (effortScore >= 3) {
+            alert("Voice Round Passed! Now for the Coding Challenge.");
+            await updateStatus('ATS');
             setPhase('coding');
             setUiState('loading');
             loadCodingTest();
+        } else {
+            await updateStatus('Rejected');
+            alert(`Voice Round Failed. You only answered ${effortScore}/5 questions. Application rejected.`);
+            navigate('/seeker/dashboard');
         }
-    } finally {
-        setIsProcessing(false);
     }
+    setIsProcessing(false);
   };
   
-  // --- 3. CODING TEST ---
+  // --- 3. CODING TEST LOGIC ---
   const loadCodingTest = async () => {
     try {
         const res = await api.post('/api/ai/get-test', { testConfig: job.testConfig || ['easy', 'medium', 'hard'] });
@@ -176,11 +158,11 @@ const InterviewRoom = () => {
     navigate('/seeker/dashboard');
   };
 
-  // --- RENDER ---
+  // --- RENDER (With Debugging UI) ---
   if (!browserSupportsSpeechRecognition) {
     return <div className="text-white p-10 bg-slate-900 h-screen">Browser not supported. Use Chrome.</div>;
   }
-
+  
   if (uiState === 'error' || !job) {
     return <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>⚠️ Session Error</h1>
@@ -194,17 +176,25 @@ const InterviewRoom = () => {
     if (phase === 'voice') {
       if (uiState === 'ready') return <button onClick={startVoiceQuestion} style={{background:'white', color:'black', padding:'12px 30px', borderRadius:'30px', fontWeight:'bold'}}>Start Voice Question {currentQIndex + 1}</button>;
       if (uiState === 'speaking') return <p style={{fontSize:'1.5rem'}}>"{questions[currentQIndex]}"</p>;
-      if (uiState === 'listening') return <div style={{width:'100%'}}>
-          <div style={{display:'flex', justifyContent:'center', marginBottom:'20px'}}>
-              <div style={{width:'80px', height:'80px', borderRadius:'50%', background: listening ? 'rgba(239, 68, 68, 0.2)' : '#334155', display:'flex', alignItems:'center', justifyContent:'center', border: listening ? '2px solid #ef4444' : 'none', transition:'all 0.2s'}}>
-                  <Mic size={40} style={{color: listening ? '#ef4444' : '#64748b'}}/>
-              </div>
-          </div>
-          <p style={{minHeight:'60px', background:'#020617', padding:'10px', borderRadius:'8px', border:'1px solid #475569'}}>{transcript || "Listening..."}</p>
-          <button onClick={submitVoiceAnswer} disabled={isProcessing} style={{padding:'10px 20px', background:'#16a34a', border:'none', color:'white', borderRadius:'8px', fontWeight:'bold', width:'100%', marginTop:'10px'}}>
-            {isProcessing ? "Grading Answer..." : "Submit Answer"}
-          </button>
-        </div>;
+      if (uiState === 'listening') return (
+        <div style={{width:'100%'}}>
+            {/* --- DEBUG BOX --- */}
+            <div style={{ background: '#444', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontSize: '12px', textAlign: 'left', border: '1px solid #666' }}>
+                <p style={{margin:0, fontWeight:'bold'}}>DEBUG INFO:</p>
+                <p style={{margin:0}}>Status: <span style={{color: listening ? 'lightgreen' : 'orange'}}>{listening ? "LISTENING" : "IDLE"}</span></p>
+                <p style={{margin:0}}>Transcript: "{transcript}"</p>
+            </div>
+            
+            <p style={{minHeight:'60px', background:'#020617', padding:'10px', borderRadius:'8px', border:'1px solid #475569'}}>{transcript || "Speak now..."}</p>
+            
+            {/* MANUAL START BUTTON */}
+            {!listening && <button onClick={manualStartListen} style={{background:'orange', color:'black', padding:'5px 10px', borderRadius:'5px', border:'none', marginBottom:'10px'}}>Force Mic On</button>}
+
+            <button onClick={submitVoiceAnswer} disabled={isProcessing} style={{padding:'10px 20px', background:'#16a34a', border:'none', color:'white', borderRadius:'8px', fontWeight:'bold', width:'100%', marginTop:'10px'}}>
+              Submit Answer
+            </button>
+        </div>
+      );
     }
     
     if (phase === 'coding') {
