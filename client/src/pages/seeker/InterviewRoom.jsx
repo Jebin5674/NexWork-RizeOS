@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, 'useState', useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import 'regenerator-runtime/runtime';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
-import { Mic, Volume2, Code, ArrowRight, Home, Loader } from 'lucide-react';
+import { Mic, Volume2, Code, ArrowRight, Home, Loader, Square } from 'lucide-react';
 import api from 'src/api';
 import { Web3Context } from '../../context/Web3Context';
 
@@ -32,8 +32,11 @@ const InterviewRoom = () => {
     const initializeInterview = async () => {
       try {
         const appRes = await api.post('/api/jobs/apply', { jobId: job._id, applicantWallet: account, status: 'Applied' });
-        if (appRes.data.success) setApplicationId(appRes.data.applicationId);
-        else { navigate('/seeker/dashboard'); return; }
+        if (appRes.data.success) {
+          setApplicationId(appRes.data.applicationId);
+        } else {
+          navigate('/seeker/dashboard'); return;
+        }
         
         const voiceRes = await api.post('/api/ai/generate-voice', { jobTitle: job.title, skills: job.skills });
         if (voiceRes.data.success) {
@@ -47,7 +50,7 @@ const InterviewRoom = () => {
     initializeInterview();
   }, [job, account]);
   
-  // Helper to update status automatically
+  // Helper to update status
   const updateStatus = async (status) => {
     if (!applicationId) return;
     try {
@@ -55,72 +58,50 @@ const InterviewRoom = () => {
     } catch (error) { console.error("Status update failed"); }
   };
 
-  // --- 2. VOICE INTERVIEW LOGIC (WITH DEBUGGING) ---
-  const speakText = (text) => {
-    console.log("DEBUG [TTS]: AI is speaking the text:", text);
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+  // --- 2. VOICE LOGIC (USER-INITIATED) ---
+  const startVoiceQuestion = () => {
+    setUiState('speaking');
+    const utterance = new SpeechSynthesisUtterance(questions[currentQIndex]);
     utterance.onend = () => {
-        console.log("DEBUG [TTS]: AI finished speaking.");
-        console.log("DEBUG [STT]: Attempting to start microphone...");
-        setUiState('listening');
-        resetTranscript();
-        SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
-        console.log("DEBUG [STT]: startListening command was sent.");
+      // Go to a state where user must click to record
+      setUiState('answering'); 
     };
     window.speechSynthesis.speak(utterance);
   };
 
-  const startVoiceQuestion = () => {
-    setUiState('speaking');
-    speakText(questions[currentQIndex]);
+  const startRecording = () => {
+    resetTranscript();
+    SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
   };
   
-  const manualStartListen = () => {
-    console.log("DEBUG [STT]: Manually forcing microphone to start...");
-    if (!listening) {
-        SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
-    } else {
-        console.log("DEBUG [STT]: Microphone is already listening.");
-    }
-  }
+  const stopRecording = () => {
+    SpeechRecognition.stopListening();
+  };
 
   const submitVoiceAnswer = async () => {
-    console.log("DEBUG: Submitting answer. Final transcript is:", transcript);
-    SpeechRecognition.stopListening();
     setIsProcessing(true);
-    const answer = transcript.length > 5 ? transcript : "No answer"; 
+    const answer = transcript.length > 5 ? transcript : "No answer";
     const newAnswers = [...voiceAnswers, answer];
     setVoiceAnswers(newAnswers);
 
-    if (currentQIndex + 1 < 5) { // Assuming 5 voice questions
-        setCurrentQIndex(prev => prev + 1);
-        setUiState('ready');
-        resetTranscript();
+    if (currentQIndex + 1 < 5) {
+      setCurrentQIndex(prev => prev + 1); setUiState('ready'); resetTranscript();
     } else {
-        const effortScore = newAnswers.filter(a => a !== "No answer").length;
-        if (effortScore >= 3) {
-            alert("Voice Round Passed! Now for the Coding Challenge.");
-            await updateStatus('ATS');
-            setPhase('coding');
-            setUiState('loading');
-            loadCodingTest();
-        } else {
-            await updateStatus('Rejected');
-            alert(`Voice Round Failed. You only answered ${effortScore}/5 questions. Application rejected.`);
-            navigate('/seeker/dashboard');
-        }
+      const effortScore = newAnswers.filter(a => a !== "No answer").length;
+      if (effortScore >= 3) {
+        alert("Voice Round Passed!"); await updateStatus('ATS'); setPhase('coding'); setUiState('loading'); loadCodingTest();
+      } else {
+        await updateStatus('Rejected'); alert(`Voice Round Failed.`); navigate('/seeker/dashboard');
+      }
     }
     setIsProcessing(false);
   };
   
-  // --- 3. CODING TEST LOGIC ---
+  // --- 3 & 4: CODING & FINISH (No changes) ---
   const loadCodingTest = async () => {
     try {
         const res = await api.post('/api/ai/get-test', { testConfig: job.testConfig || ['easy', 'medium', 'hard'] });
-        setQuestions(res.data.questions);
-        setCurrentQIndex(0);
-        setUiState('ready');
+        setQuestions(res.data.questions); setCurrentQIndex(0); setUiState('ready');
     } catch (error) { alert("Failed to load Coding Test."); }
   };
 
@@ -128,13 +109,9 @@ const InterviewRoom = () => {
     setIsProcessing(true);
     try {
         const res = await api.post('/api/ai/evaluate-code', { questionTitle: questions[currentQIndex].title, userCode });
-        const newScores = [...codeScores, res.data.score];
-        setCodeScores(newScores);
-
+        const newScores = [...codeScores, res.data.score]; setCodeScores(newScores);
         if (currentQIndex + 1 < questions.length) {
-            setCurrentQIndex(prev => prev + 1);
-            setUserCode("");
-            setUiState('ready');
+            setCurrentQIndex(prev => prev + 1); setUserCode(""); setUiState('ready');
         } else {
             finishInterview(newScores);
         }
@@ -142,11 +119,9 @@ const InterviewRoom = () => {
     finally { setIsProcessing(false); }
   };
 
-  // --- 4. FINISH & APPLY ---
   const finishInterview = async (finalCodeScores) => {
     const totalCodeScore = finalCodeScores.reduce((a, b) => a + b, 0);
     const passedCode = totalCodeScore >= 2;
-
     if (passedCode) {
         const finalScore = Math.round((totalCodeScore / finalCodeScores.length) * 100);
         await updateStatus('HR');
@@ -158,11 +133,8 @@ const InterviewRoom = () => {
     navigate('/seeker/dashboard');
   };
 
-  // --- RENDER (With Debugging UI) ---
-  if (!browserSupportsSpeechRecognition) {
-    return <div className="text-white p-10 bg-slate-900 h-screen">Browser not supported. Use Chrome.</div>;
-  }
-  
+  // --- RENDER (With New Voice UI) ---
+  if (!browserSupportsSpeechRecognition) return <div>Browser not supported. Use Chrome.</div>;
   if (uiState === 'error' || !job) {
     return <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>⚠️ Session Error</h1>
@@ -176,23 +148,22 @@ const InterviewRoom = () => {
     if (phase === 'voice') {
       if (uiState === 'ready') return <button onClick={startVoiceQuestion} style={{background:'white', color:'black', padding:'12px 30px', borderRadius:'30px', fontWeight:'bold'}}>Start Voice Question {currentQIndex + 1}</button>;
       if (uiState === 'speaking') return <p style={{fontSize:'1.5rem'}}>"{questions[currentQIndex]}"</p>;
-      if (uiState === 'listening') return (
+      
+      if (uiState === 'answering') return (
         <div style={{width:'100%'}}>
-            {/* --- DEBUG BOX --- */}
-            <div style={{ background: '#444', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontSize: '12px', textAlign: 'left', border: '1px solid #666' }}>
-                <p style={{margin:0, fontWeight:'bold'}}>DEBUG INFO:</p>
-                <p style={{margin:0}}>Status: <span style={{color: listening ? 'lightgreen' : 'orange'}}>{listening ? "LISTENING" : "IDLE"}</span></p>
-                <p style={{margin:0}}>Transcript: "{transcript}"</p>
-            </div>
-            
-            <p style={{minHeight:'60px', background:'#020617', padding:'10px', borderRadius:'8px', border:'1px solid #475569'}}>{transcript || "Speak now..."}</p>
-            
-            {/* MANUAL START BUTTON */}
-            {!listening && <button onClick={manualStartListen} style={{background:'orange', color:'black', padding:'5px 10px', borderRadius:'5px', border:'none', marginBottom:'10px'}}>Force Mic On</button>}
-
-            <button onClick={submitVoiceAnswer} disabled={isProcessing} style={{padding:'10px 20px', background:'#16a34a', border:'none', color:'white', borderRadius:'8px', fontWeight:'bold', width:'100%', marginTop:'10px'}}>
-              Submit Answer
-            </button>
+          <p style={{minHeight:'60px', background:'#020617', padding:'10px', borderRadius:'8px', border:'1px solid #475569', color: listening ? 'white' : '#64748b'}}>
+            {transcript || "Click 'Record Answer' to begin..."}
+          </p>
+          <div style={{display:'flex', gap:'10px', justifyContent:'center', marginTop:'20px'}}>
+              {!listening ? 
+                <button onClick={startRecording} style={{padding:'10px 20px', background:'#ef4444', border:'none', color:'white', borderRadius:'8px', fontWeight:'bold', display:'flex', alignItems:'center'}}><Mic size={16} style={{marginRight:'5px'}}/> Record Answer</button>
+                :
+                <button onClick={stopRecording} style={{padding:'10px 20px', background:'#64748b', border:'none', color:'white', borderRadius:'8px', fontWeight:'bold', display:'flex', alignItems:'center'}}><Square size={16} style={{marginRight:'5px'}}/> Stop Recording</button>
+              }
+              <button onClick={submitVoiceAnswer} disabled={isProcessing} style={{padding:'10px 20px', background:'#16a34a', border:'none', color:'white', borderRadius:'8px', fontWeight:'bold'}}>
+                {isProcessing ? "Processing..." : "Submit Answer"}
+              </button>
+          </div>
         </div>
       );
     }
