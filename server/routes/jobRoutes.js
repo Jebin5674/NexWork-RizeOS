@@ -11,16 +11,25 @@ router.delete('/:id', deleteJob);
 // --- APPLICATION ROUTES ---
 
 // 1. Apply to a Job
+// NEW FIXED CODE
 router.post('/apply', async (req, res) => {
     try {
-        const { jobId, applicantWallet, interviewScore } = req.body;
+        const { jobId, applicantWallet, interviewScore, status } = req.body;
         
-        // Prevent duplicate applications
         const exists = await Application.findOne({ jobId, applicantWallet });
         if(exists) return res.status(400).json({ success: false, message: "Already applied" });
 
-        await Application.create({ jobId, applicantWallet, interviewScore });
-        res.json({ success: true });
+        // Create the new application
+        const newApplication = await Application.create({ 
+            jobId, 
+            applicantWallet, 
+            interviewScore,
+            status 
+        });
+
+        // --- THE FIX: Return the ID of the new application ---
+        res.json({ success: true, applicationId: newApplication._id });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, error: "Server Error" });
