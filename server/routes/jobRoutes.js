@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { createJob, getJobs, deleteJob } = require('../controllers/jobController');
-const Application = require('../models/Application'); // Ensure this model exists
+const Application = require('../models/Application');
 
 // --- JOB ROUTES ---
 router.post('/', createJob);
@@ -10,14 +10,16 @@ router.delete('/:id', deleteJob);
 
 // --- APPLICATION ROUTES ---
 
-// 1. Apply to a Job
-// NEW FIXED CODE
+// 1. APPLY TO A JOB (FIXED)
 router.post('/apply', async (req, res) => {
     try {
         const { jobId, applicantWallet, interviewScore, status } = req.body;
         
         const exists = await Application.findOne({ jobId, applicantWallet });
-        if(exists) return res.status(400).json({ success: false, message: "Already applied" });
+        if(exists) {
+            // If they already applied, just return the existing ID so they can continue
+            return res.json({ success: true, applicationId: exists._id });
+        }
 
         // Create the new application
         const newApplication = await Application.create({ 
@@ -31,28 +33,22 @@ router.post('/apply', async (req, res) => {
         res.json({ success: true, applicationId: newApplication._id });
 
     } catch (error) {
-        console.error(error);
+        console.error("Apply Error:", error);
         res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 
-// 2. Get My Applications (For Seeker Dashboard)
+// 2. GET MY APPLICATIONS
 router.get('/applications/:wallet', async (req, res) => {
     try {
-        // Find apps where applicantWallet matches
-        // .populate('jobId') fills in the Title/Company details from the Job collection
-        const apps = await Application.find({ applicantWallet: req.params.wallet })
-            .populate('jobId')
-            .sort({ appliedAt: -1 });
-            
+        const apps = await Application.find({ applicantWallet: req.params.wallet }).populate('jobId').sort({ appliedAt: -1 });
         res.json({ success: true, data: apps });
     } catch (error) {
-        console.error(error);
         res.status(500).json({ success: false });
     }
 });
 
-// 3. Get Candidates for a Job (For Recruiter ATS)
+// 3. GET CANDIDATES FOR A JOB
 router.get('/candidates/:jobId', async (req, res) => {
     try {
         const apps = await Application.find({ jobId: req.params.jobId });
@@ -62,10 +58,10 @@ router.get('/candidates/:jobId', async (req, res) => {
     }
 });
 
-// 4. Update Application Status (For Recruiter Actions)
+// 4. UPDATE STATUS
 router.put('/status/:id', async (req, res) => {
     try {
-        const { status } = req.body; // e.g. "HR_ROUND", "HIRED"
+        const { status } = req.body;
         await Application.findByIdAndUpdate(req.params.id, { status });
         res.json({ success: true });
     } catch (error) {
@@ -73,10 +69,9 @@ router.put('/status/:id', async (req, res) => {
     }
 });
 
-// 5. Delete an Application (For Seeker to remove rejected ones)
+// 5. DELETE APPLICATION
 router.delete('/application/:id', async (req, res) => {
     try {
-        const Application = require('../models/Application');
         await Application.findByIdAndDelete(req.params.id);
         res.json({ success: true });
     } catch (error) {
