@@ -33,9 +33,11 @@ const InterviewRoom = () => {
       try {
         const appRes = await api.post('/api/jobs/apply', { jobId: job._id, applicantWallet: account, status: 'Applied' });
         if (appRes.data.success) {
-          setApplicationId(appRes.data.applicationId);
+            setApplicationId(appRes.data.applicationId);
         } else {
-          navigate('/seeker/dashboard'); return;
+            alert("Application Error: " + appRes.data.message);
+            navigate('/seeker/dashboard');
+            return;
         }
         
         const voiceRes = await api.post('/api/ai/generate-voice', { jobTitle: job.title, skills: job.skills });
@@ -44,13 +46,13 @@ const InterviewRoom = () => {
             setUiState('ready');
         }
       } catch (error) {
+        alert("Failed to initialize interview: " + (error.response?.data?.message || error.message));
         navigate('/seeker/dashboard');
       }
     };
     initializeInterview();
   }, [job, account]);
   
-  // Helper to update status
   const updateStatus = async (status) => {
     if (!applicationId) return;
     try {
