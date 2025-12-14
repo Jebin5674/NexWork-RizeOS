@@ -25,14 +25,15 @@ const InterviewRoom = () => {
 
   const { transcript, listening, resetTranscript, browserSupportsSpeechRecognition } = useSpeechRecognition();
 
-  // --- 1. INITIALIZE ---
+  // --- 1. INITIALIZE (SEQUENTIAL & PATIENT) ---
   useEffect(() => {
     if (!job || !account) { setUiState('error'); return; }
     
     const initializeInterview = async () => {
-      let tempAppId = null;
+      let tempAppId = null; // Use a temporary variable
       try {
-        console.log("Step 1: Attempting to create application record...");
+        // --- STEP 1: CREATE APPLICATION ---
+        console.log("Attempting to create application...");
         const appRes = await api.post('/api/jobs/apply', { 
             jobId: job._id, 
             applicantWallet: account,
@@ -42,46 +43,51 @@ const InterviewRoom = () => {
         if (appRes.data.success && appRes.data.applicationId) {
             tempAppId = appRes.data.applicationId;
             setApplicationId(tempAppId);
-            console.log("Step 1 SUCCESS: Application created with ID:", tempAppId);
+            console.log("SUCCESS: Application created with ID:", tempAppId);
         } else {
-            // This will trigger if user already applied
+            // Handle "Already Applied" or other creation errors
             alert("Application Error: " + (appRes.data.message || "Could not create application record."));
             navigate('/seeker/dashboard');
             return;
         }
         
-        console.log("Step 2: Attempting to fetch voice questions...");
+        // --- STEP 2: FETCH VOICE QUESTIONS (ONLY AFTER STEP 1 SUCCEEDS) ---
+        console.log("Application created. Now fetching AI questions...");
         const voiceRes = await api.post('/api/ai/generate-voice', { jobTitle: job.title, skills: job.skills });
-        if (voiceRes.data.success) {
+        
+        if (voiceRes.data.success && voiceRes.data.questions.length > 0) {
             setQuestions(voiceRes.data.questions);
             setUiState('ready');
-            console.log("Step 2 SUCCESS: AI questions loaded.");
+            console.log("SUCCESS: AI questions loaded.");
         } else {
             throw new Error("AI failed to generate questions.");
         }
       } catch (error) {
-        // This block will give us the real error
         console.error("CRITICAL INITIALIZATION FAILED:", error);
         const errorMsg = error.response ? JSON.stringify(error.response.data) : error.message;
         alert("Failed to initialize interview. Error: " + errorMsg);
         
-        // If app was created but questions failed, delete the ghost application
+        // Cleanup: If app was created but questions failed, delete the app
         if(tempAppId) {
             await api.delete(`/api/jobs/application/${tempAppId}`);
         }
-        
         navigate('/seeker/dashboard');
       }
     };
     initializeInterview();
   }, [job, account]);
+  
+  // --- 2. VOICE INTERVIEW LOGIC (USER-INITIATED) ---
+  const updateStatus = async (status) => {
+    if (!applicationId) return;
+    try { await api.put(`/api/jobs/status/${applicationId}`, { status }); }
+    catch (error) { console.error("Status update failed"); }
+  };
 
-  // --- 2. VOICE LOGIC (USER-INITIATED) ---
   const startVoiceQuestion = () => {
     setUiState('speaking');
     const utterance = new SpeechSynthesisUtterance(questions[currentQIndex]);
     utterance.onend = () => {
-      // Go to a state where user must click to record
       setUiState('answering'); 
     };
     window.speechSynthesis.speak(utterance);
@@ -115,7 +121,7 @@ const InterviewRoom = () => {
     setIsProcessing(false);
   };
   
-  // --- 3 & 4: CODING & FINISH (No changes) ---
+  // --- 3 & 4: CODING & FINISH ---
   const loadCodingTest = async () => {
     try {
         const res = await api.post('/api/ai/get-test', { testConfig: job.testConfig || ['easy', 'medium', 'hard'] });
@@ -151,13 +157,15 @@ const InterviewRoom = () => {
     navigate('/seeker/dashboard');
   };
 
-  // --- RENDER (With New Voice UI) ---
+  // --- RENDER ---
   if (!browserSupportsSpeechRecognition) return <div>Browser not supported. Use Chrome.</div>;
   if (uiState === 'error' || !job) {
-    return <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>⚠️ Session Error</h1>
-        <button onClick={() => navigate('/seeker/dashboard')} style={{ background: '#2563eb', padding: '10px 20px', borderRadius: '8px', marginTop: '10px' }}>Dashboard</button>
-    </div>;
+    return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white' }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>⚠️ Session Error</h1>
+            <button onClick={() => navigate('/seeker/dashboard')} style={{ background: '#2563eb', padding: '10px 20px', borderRadius: '8px', marginTop: '10px' }}>Dashboard</button>
+        </div>
+    );
   }
 
   const renderContent = () => {
@@ -166,7 +174,6 @@ const InterviewRoom = () => {
     if (phase === 'voice') {
       if (uiState === 'ready') return <button onClick={startVoiceQuestion} style={{background:'white', color:'black', padding:'12px 30px', borderRadius:'30px', fontWeight:'bold'}}>Start Voice Question {currentQIndex + 1}</button>;
       if (uiState === 'speaking') return <p style={{fontSize:'1.5rem'}}>"{questions[currentQIndex]}"</p>;
-      
       if (uiState === 'answering') return (
         <div style={{width:'100%'}}>
           <p style={{minHeight:'60px', background:'#020617', padding:'10px', borderRadius:'8px', border:'1px solid #475569', color: listening ? 'white' : '#64748b'}}>
