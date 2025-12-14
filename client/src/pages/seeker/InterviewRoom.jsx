@@ -30,35 +30,51 @@ const InterviewRoom = () => {
     if (!job || !account) { setUiState('error'); return; }
     
     const initializeInterview = async () => {
+      let tempAppId = null;
       try {
-        const appRes = await api.post('/api/jobs/apply', { jobId: job._id, applicantWallet: account, status: 'Applied' });
-        if (appRes.data.success) {
-            setApplicationId(appRes.data.applicationId);
+        console.log("Step 1: Attempting to create application record...");
+        const appRes = await api.post('/api/jobs/apply', { 
+            jobId: job._id, 
+            applicantWallet: account,
+            status: 'Applied'
+        });
+
+        if (appRes.data.success && appRes.data.applicationId) {
+            tempAppId = appRes.data.applicationId;
+            setApplicationId(tempAppId);
+            console.log("Step 1 SUCCESS: Application created with ID:", tempAppId);
         } else {
-            alert("Application Error: " + appRes.data.message);
+            // This will trigger if user already applied
+            alert("Application Error: " + (appRes.data.message || "Could not create application record."));
             navigate('/seeker/dashboard');
             return;
         }
         
+        console.log("Step 2: Attempting to fetch voice questions...");
         const voiceRes = await api.post('/api/ai/generate-voice', { jobTitle: job.title, skills: job.skills });
         if (voiceRes.data.success) {
             setQuestions(voiceRes.data.questions);
             setUiState('ready');
+            console.log("Step 2 SUCCESS: AI questions loaded.");
+        } else {
+            throw new Error("AI failed to generate questions.");
         }
       } catch (error) {
-        alert("Failed to initialize interview: " + (error.response?.data?.message || error.message));
+        // This block will give us the real error
+        console.error("CRITICAL INITIALIZATION FAILED:", error);
+        const errorMsg = error.response ? JSON.stringify(error.response.data) : error.message;
+        alert("Failed to initialize interview. Error: " + errorMsg);
+        
+        // If app was created but questions failed, delete the ghost application
+        if(tempAppId) {
+            await api.delete(`/api/jobs/application/${tempAppId}`);
+        }
+        
         navigate('/seeker/dashboard');
       }
     };
     initializeInterview();
   }, [job, account]);
-  
-  const updateStatus = async (status) => {
-    if (!applicationId) return;
-    try {
-        await api.put(`/api/jobs/status/${applicationId}`, { status });
-    } catch (error) { console.error("Status update failed"); }
-  };
 
   // --- 2. VOICE LOGIC (USER-INITIATED) ---
   const startVoiceQuestion = () => {
